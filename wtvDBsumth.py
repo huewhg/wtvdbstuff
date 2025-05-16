@@ -1,12 +1,16 @@
-import fuzzywuzzy.fuzz
+
+import os, sys, subprocess, importlib.util
+for mod, pkg in [("fuzzywuzzy","fuzzywuzzy"), ("sqlalchemy","SQLAlchemy")]:
+    if importlib.util.find_spec(mod) is None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+from fuzzywuzzy import fuzz
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from getpass import getpass
-import hashlib
-import os
-import fuzzywuzzy
+import hashlib, os
 from datetime import datetime
+
 engine = create_engine('sqlite:///users.db', echo=False)
 Base = declarative_base()
 UID = 0
@@ -36,10 +40,9 @@ Base.metadata.create_all(engine)
 
 Session = sessionmaker(bind=engine)
 session = Session()
-DEBUG = True
+DEBUG = False
 
 def logon():
-    
     while True:
         cls()
         is_int = False
@@ -49,23 +52,27 @@ def logon():
             print(f"{user.ID}) {user.Name}")
             if user.ID > max:
                 max = user.ID
-        choice = input(f"Choose user to log in to by ID (1-{max}). If you want to create a new user, input \"n\". If you want to exit the aplication, input \"e\". ")
-        if choice.lower().strip() == "n":
+        if len(all_users) == 0:
+            print("Please, create a user.")
             new_user()
-        elif choice.lower().strip() == "e":
-            exit()
         else:
-            try:
-                choice = int(choice.strip())
-                is_int = True
-            except:
-                print("Invalid input!")
-                is_int = False
-            if is_int:
-                log, user = checkPWD(choice, all_users)
-                if log:
-                    print(f"Logging in {user.Name}")
-                    return user.ID, user.Name
+            choice = input(f"Choose user to log in to by ID (1-{max}). If you want to create a new user, input \"n\". If you want to exit the aplication, input \"e\". ")
+            if choice.lower().strip() == "n":
+                new_user()
+            elif choice.lower().strip() == "e":
+                exit()
+            else:
+                try:
+                    choice = int(choice.strip())
+                    is_int = True
+                except:
+                    print("Invalid input!")
+                    is_int = False
+                if is_int:
+                    log, user = checkPWD(choice, all_users)
+                    if log:
+                        print(f"Logging in {user.Name}")
+                        return user.ID, user.Name
 
 def cls():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -193,7 +200,7 @@ while True:
                 search = input("Insert text to search: " )
                 its = {}
                 for i in all_Items:
-                    sim = fuzzywuzzy.fuzz.ratio(search.lower(), i.Name.lower())
+                    sim = fuzz.ratio(search.lower(), i.Name.lower())
                     if DEBUG:
                         print(sim)
                     its.update({i.ID: sim})
